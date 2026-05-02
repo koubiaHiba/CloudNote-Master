@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* Styles spécifiques pour la page d'inscription */
+    .auth-container {
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 40px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .auth-container h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 28px;
+        font-weight: 600;
+        position: relative;
+    }
+
+    .auth-container h2::after {
+        content: '';
+        display: block;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 10px auto 0;
+        border-radius: 3px;
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .auth-input {
+        padding: 14px 18px;
+        border: 2px solid #e1e5e9;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        outline: none;
+        font-family: inherit;
+    }
+
+    .auth-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .auth-input:valid {
+        border-color: #51cf66;
+    }
+
+    .auth-input:invalid:not(:placeholder-shown) {
+        border-color: #ff6b6b;
+    }
+
+    .auth-input::placeholder {
+        color: #adb5bd;
+        font-weight: 400;
+    }
+
+    .auth-btn {
+        padding: 14px 18px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+    }
+
+    .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .auth-btn:active {
+        transform: translateY(0);
+    }
+
+    .auth-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .auth-link {
+        text-align: center;
+        margin-top: 25px;
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .auth-link a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+
+    .auth-link a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+
+    .alert {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .alert-error {
+        background: #fee;
+        color: #c33;
+        border: 1px solid #fcc;
+    }
+
+    .alert-success {
+        background: #efe;
+        color: #3c3;
+        border: 1px solid #cfc;
+    }
+
+    .password-strength {
+        margin-top: -10px;
+        font-size: 12px;
+        padding-left: 5px;
+    }
+
+    .strength-weak { color: #ff6b6b; }
+    .strength-medium { color: #ffd43b; }
+    .strength-strong { color: #51cf66; }
+
+    .loading {
+        position: relative;
+        color: transparent;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        left: 50%;
+        margin-left: -10px;
+        margin-top: -10px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .requirements {
+        font-size: 12px;
+        color: #868e96;
+        margin-top: -10px;
+        padding-left: 5px;
+    }
+
+    .requirements ul {
+        margin: 5px 0;
+        padding-left: 20px;
+    }
+
+    .requirements li {
+        margin: 2px 0;
+    }
+
+    .requirements li.valid {
+        color: #51cf66;
+        text-decoration: line-through;
+    }
+
+    @media (max-width: 768px) {
+        .auth-container {
+            margin: 20px;
+            padding: 30px 20px;
+        }
+        
+        .auth-container h2 {
+            font-size: 24px;
+        }
+        
+        .auth-input,
+        .auth-btn {
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+    }
+</style>
+
+<div class="auth-container">
+    <h2>Inscription</h2>
+    <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+    <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+    
+    <form class="auth-form" onsubmit="event.preventDefault(); register();">
+        <input type="text" id="username" class="auth-input" placeholder="Nom d'utilisateur" required autocomplete="username" minlength="3">
+        <input type="password" id="password" class="auth-input" placeholder="Mot de passe" required autocomplete="new-password">
+        <div class="password-strength" id="passwordStrength"></div>
+        <div class="requirements" id="passwordRequirements">
+            <ul>
+                <li id="req-length">✓ Au moins 4 caractères</li>
+            </ul>
+        </div>
+        <button type="submit" id="registerBtn" class="auth-btn">Créer mon compte</button>
+    </form>
+    
+    <div class="auth-link">
+        Déjà un compte ? <a href="/login">Se connecter</a>
+    </div>
+</div>
+
+<script>
+// Vérification de la force du mot de passe
+function checkPasswordStrength(password) {
+    const strengthDiv = document.getElementById('passwordStrength');
+    const reqLength = document.getElementById('req-length');
+    
+    let strength = 0;
+    let message = '';
+    
+    // Vérifier la longueur
+    if (password.length >= 4) {
+        strength++;
+        reqLength.classList.add('valid');
+        reqLength.style.color = '#51cf66';
+    } else {
+        reqLength.classList.remove('valid');
+        reqLength.style.color = '#868e96';
+    }
+    
+    // Vérifier les chiffres
+    if (/\d/.test(password)) strength++;
+    
+    // Vérifier les majuscules
+    if (/[A-Z]/.test(password)) strength++;
+    
+    // Vérifier les caractères spéciaux
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+    
+    // Déterminer la force
+    if (password.length === 0) {
+        message = '';
+    } else if (strength === 1) {
+        message = '🔴 Mot de passe faible';
+        strengthDiv.className = 'password-strength strength-weak';
+    } else if (strength === 2) {
+        message = '🟡 Mot de passe moyen';
+        strengthDiv.className = 'password-strength strength-medium';
+    } else {
+        message = '🟢 Mot de passe fort';
+        strengthDiv.className = 'password-strength strength-strong';
+    }
+    
+    strengthDiv.textContent = message;
+}
+
+// Écouter les changements de mot de passe
+document.getElementById('password').addEventListener('input', function(e) {
+    checkPasswordStrength(e.target.value);
+});
+
+async function register() {
+    const btn = document.getElementById('registerBtn');
+    const errorDiv = document.getElementById('errorMessage');
+    const successDiv = document.getElementById('successMessage');
+    
+    // Réinitialiser les messages
+    btn.disabled = true;
+    btn.classList.add('loading');
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    
+    // Validations
+    if (!username || !password) {
+        errorDiv.textContent = 'Veuillez remplir tous les champs.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        return;
+    }
+    
+    if (username.length < 3) {
+        errorDiv.textContent = 'Le nom d\'utilisateur doit contenir au moins 3 caractères.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        return;
+    }
+    
+    if (password.length < 4) {
+        errorDiv.textContent = 'Le mot de passe doit contenir au moins 4 caractères.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            successDiv.textContent = 'Compte créé avec succès ! Redirection vers la page de connexion...';
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
+        } else {
+            errorDiv.textContent = data.error || 'Ce nom d\'utilisateur existe déjà. Choisissez-en un autre.';
+            errorDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Erreur réseau. Veuillez réessayer.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    }
+}
+
+// Permettre la soumission avec la touche Entrée
+document.querySelector('.auth-form').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        register();
+    }
+});
+
+// Initialiser la vérification de mot de passe
+checkPasswordStrength('');
+</script>
+{% endblock %}

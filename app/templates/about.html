@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}CloudNotes — About{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <h2 class="section-title">Architecture</h2>
+  <p class="section-intro">
+    CloudNotes runs inside a Docker container hosted on <strong>Azure App Service</strong>.
+    Every time code is pushed to the <code>main</code> branch on GitHub, a GitHub Actions
+    workflow automatically builds a new container image, pushes it to
+    <strong>Azure Container Registry</strong>, and deploys the updated image to App Service —
+    with zero manual steps.
+  </p>
+
+  <div class="diagram-box">
+    <pre class="ascii-diagram">
+  Developer
+      |
+      | git push origin main
+      v
+ ┌──────────────┐
+ │   GitHub     │
+ │  Repository  │
+ └──────┬───────┘
+        │ triggers
+        v
+ ┌──────────────────┐
+ │  GitHub Actions  │  ← run tests, build image
+ │   CI/CD Pipeline │
+ └──────┬───────────┘
+        │ docker push
+        v
+ ┌──────────────────────┐
+ │  Azure Container     │
+ │  Registry (ACR)      │  ← stores versioned images
+ └──────┬───────────────┘
+        │ deploy image
+        v
+ ┌──────────────────────┐
+ │  Azure App Service   │  ← runs the container
+ │  (Linux container)   │
+ └──────┬───────────────┘
+        │ HTTP/HTTPS
+        v
+  User's Browser
+    </pre>
+  </div>
+</section>
+
+<section class="page-section">
+  <h2 class="section-title">Cloud Services Used</h2>
+  <ul class="services-list">
+    <li class="service-item">
+      <span class="service-name">Azure App Service</span>
+      <span class="service-desc">Managed platform that runs the Docker container and exposes it over HTTPS on a public URL.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">Azure Container Registry (ACR)</span>
+      <span class="service-desc">Private Docker registry that stores and versions every container image built by the pipeline.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">Azure Monitor</span>
+      <span class="service-desc">Alerting rules watch for HTTP 5xx errors and high response times, notifying on any degradation.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">GitHub Actions</span>
+      <span class="service-desc">CI/CD automation: installs dependencies, runs the test suite, builds and pushes the image, then triggers deployment — all on every push to <code>main</code>.</span>
+    </li>
+  </ul>
+</section>
+
+<section class="page-section">
+  <h2 class="section-title">Skills Demonstrated</h2>
+  <div class="skills-grid">
+    <div class="skill-card">
+      <h3 class="skill-title">Containerization</h3>
+      <p>Multi-stage Dockerfile produces a minimal Python 3.11 image. The app is served by Gunicorn with 4 workers for production-grade concurrency.</p>
+    </div>
+    <div class="skill-card">
+      <h3 class="skill-title">CI/CD Pipeline</h3>
+      <p>GitHub Actions workflow builds, tests, and deploys on every push. No manual intervention required after initial setup.</p>
+    </div>
+    <div class="skill-card">
+      <h3 class="skill-title">Cloud Deployment</h3>
+      <p>Application deployed to Microsoft Azure App Service with a public HTTPS endpoint, configured to pull images directly from ACR.</p>
+    </div>
+    <div class="skill-card">
+      <h3 class="skill-title">Health Monitoring</h3>
+      <p>A <code>/health</code> endpoint enables Azure App Service health checks. Azure Monitor alerts fire on HTTP 5xx errors or response times above 5 seconds.</p>
+    </div>
+    <div class="skill-card">
+      <h3 class="skill-title">Infrastructure as Code</h3>
+      <p>All Azure resources can be reproduced from the Azure CLI commands in <code>DEPLOYMENT_GUIDE.md</code> — no clicking through the portal required.</p>
+    </div>
+    <div class="skill-card">
+      <h3 class="skill-title">Security Practices</h3>
+      <p>Credentials are stored as encrypted GitHub Secrets, never in source code. ACR admin credentials are scoped to the deployment service principal.</p>
+    </div>
+  </div>
+</section>
+
+<section class="page-section">
+  <h2 class="section-title">Observability</h2>
+  <p class="section-intro">
+    CloudNotes is instrumented end-to-end so that every request leaves a trace in Azure and the app's internal state is always visible.
+  </p>
+  <ul class="services-list">
+    <li class="service-item">
+      <span class="service-name">Structured JSON Logging</span>
+      <span class="service-desc">Every request emits a single-line JSON object (timestamp, method, path, status, response time, request ID). Azure Log Analytics ingests these automatically, enabling queries like <code>| where status == 500</code> or <code>| summarize avg(response_time_ms)</code> without any log-parsing configuration.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">Custom Metrics Endpoint (<code>/metrics</code>)</span>
+      <span class="service-desc">Returns a live JSON snapshot: total requests, requests by method and status code, notes created/deleted, average response time, uptime, and current note count. Any monitoring tool — or just <code>curl</code> — can poll this endpoint to confirm the app is alive and active.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">Live Dashboard (<code>/dashboard</code>)</span>
+      <span class="service-desc">A browser-based operations dashboard that auto-refreshes every 5 seconds. Shows all metrics in card layout, a pure-CSS bar chart of requests by HTTP method, and a rolling activity log of the last 10 requests with method, path, status, and response time.</span>
+    </li>
+    <li class="service-item">
+      <span class="service-name">Enhanced Health Check (<code>/health</code>)</span>
+      <span class="service-desc">Returns a rich payload including app version, uptime, memory usage, note count, total requests served, Python version, and flags indicating whether the app is running in a container or on Azure App Service. Azure uses this endpoint to determine container health and restart the container if it returns a non-2xx response.</span>
+    </li>
+  </ul>
+</section>
+{% endblock %}

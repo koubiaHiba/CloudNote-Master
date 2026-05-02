@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}CloudNotes — My Notes{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <h2 class="section-title">Add a Note</h2>
+  <form id="note-form" class="note-form" novalidate>
+    <div class="form-group">
+      <label for="note-title" class="form-label">Title</label>
+      <input type="text" id="note-title" class="form-input" placeholder="Note title" required />
+    </div>
+    <div class="form-group">
+      <label for="note-content" class="form-label">Content</label>
+      <textarea id="note-content" class="form-textarea" placeholder="Write your note here…" rows="4"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Note</button>
+  </form>
+</section>
+
+<section class="page-section">
+  <h2 class="section-title">My Notes</h2>
+  <div id="notes-grid" class="notes-grid">
+    <p class="empty-state">No notes yet. Add one above.</p>
+  </div>
+</section>
+
+<!-- Edit modal -->
+<div id="edit-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <h3 id="modal-title" class="modal-title">Edit Note</h3>
+    <form id="edit-form" novalidate>
+      <input type="hidden" id="edit-id" />
+      <div class="form-group">
+        <label for="edit-title" class="form-label">Title</label>
+        <input type="text" id="edit-title" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label for="edit-content" class="form-label">Content</label>
+        <textarea id="edit-content" class="form-textarea" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Update</button>
+        <button type="button" id="cancel-edit" class="btn btn-secondary">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

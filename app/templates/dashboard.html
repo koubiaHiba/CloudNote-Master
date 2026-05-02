@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Quill Editor CSS et JS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<style>
+  .dashboard-container { display: flex; height: calc(100vh - 60px); background: #f0f2f5; }
+  .sidebar { width: 280px; background: white; border-right: 1px solid #e0e0e0; padding: 15px; overflow-y: auto; }
+  .editor-area { flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa; }
+  
+  .tags-container { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .tag { background: #e9ecef; padding: 3px 10px; border-radius: 15px; font-size: 11px; cursor: pointer; }
+  .tag:hover { background: #667eea; color: white; }
+  .tag-input-group { display: flex; gap: 8px; margin: 8px 0; }
+  .tag-input { flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; }
+  
+  .theme-toggle { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 20px; z-index: 1000; }
+  .dark-theme { background: #1a1a2e; color: #eee; }
+  .dark-theme .sidebar { background: #16213e; border-right-color: #0f3460; }
+  .dark-theme .editor-area { background: #1a1a2e; }
+  .dark-theme .note-item { background: #16213e; border-color: #0f3460; }
+  .dark-theme .ql-toolbar { background: #0f3460; border-color: #1a1a2e; }
+  .dark-theme .ql-container { background: #16213e; border-color: #1a1a2e; }
+  .dark-theme .ql-editor { color: #eee; min-height: 200px; }
+  
+  .share-btn, .export-btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-right: 8px; border: none; font-size: 12px; }
+  .share-btn { background: #17a2b8; color: white; }
+  .export-btn { background: #6c757d; color: white; }
+  .note-actions-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  
+  .search-bar input { width: 100%; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; }
+  .filter-btn { width: 100%; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; margin-bottom: 8px; font-size: 13px; }
+  .filter-btn.active { background: #ff9800; color: white; }
+  .new-note-btn { width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; margin: 12px 0; font-weight: 600; font-size: 13px; }
+  
+  .note-item { padding: 10px; background: white; border-radius: 8px; cursor: pointer; margin-bottom: 8px; border: 1px solid #e9ecef; }
+  .note-item:hover { transform: translateX(3px); }
+  .note-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+  .note-title { font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+  .note-preview { font-size: 11px; color: #6c757d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note-date { font-size: 9px; color: #adb5bd; margin-top: 4px; }
+  
+  #noteTitle { width: 100%; font-size: 22px; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; margin-bottom: 12px; font-weight: 600; }
+  #noteTitle:focus { outline: none; border-color: #667eea; }
+  
+  /* Quill Editor optimisé - PLUS PETIT */
+  .quill-wrapper { margin-bottom: 12px; }
+  .ql-toolbar { border-radius: 8px 8px 0 0; padding: 6px !important; }
+  .ql-container { border-radius: 0 0 8px 8px; font-size: 13px; }
+  .ql-editor { min-height: 180px !important; max-height: 250px !important; overflow-y: auto; font-size: 13px; line-height: 1.5; }
+  
+  /* Barre d'outils compacte */
+  .ql-toolbar .ql-formats { margin-right: 6px; }
+  .ql-toolbar button { width: 26px; height: 26px; padding: 2px; }
+  .ql-toolbar .ql-picker { font-size: 11px; }
+  .ql-toolbar .ql-picker-label { padding: 0 6px; height: 24px; }
+  
+  .media-upload { margin: 12px 0; padding: 12px; background: #f8f9fa; border-radius: 8px; }
+  .upload-btn { display: inline-block; padding: 6px 12px; background: #28a745; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .media-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .media-item { position: relative; border: 1px solid #dee2e6; border-radius: 6px; padding: 5px; background: white; }
+  .media-item img, .media-item video { max-width: 80px; max-height: 80px; border-radius: 4px; }
+  .delete-media { position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; }
+  
+  .save-btn, .delete-btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; margin-top: 10px; }
+  .save-btn { background: #28a745; color: white; margin-right: 8px; }
+  .delete-btn { background: #dc3545; color: white; }
+  
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+  .modal-content { background: white; width: 400px; margin: 100px auto; padding: 20px; border-radius: 12px; }
+  .modal-content input, .modal-content textarea { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #dee2e6; border-radius: 6px; }
+  
+  .no-note { text-align: center; padding: 60px; color: #6c757d; font-size: 14px; }
+  h4 { font-size: 13px; margin: 10px 0 5px; }
+</style>
+
+<div class="dashboard-container" id="dashboardContainer">
+  <div class="sidebar">
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Rechercher..." onkeyup="searchNotes()">
+    </div>
+    <button onclick="toggleFavoriteFilter()" id="favFilterBtn" class="filter-btn">⭐ Favorites</button>
+    <button onclick="showCreateNoteModal()" class="new-note-btn">+ Nouvelle note</button>
+    <h4>🏷️ Tags</h4>
+    <div id="tagsCloud" class="tags-container"></div>
+    <div class="notes-list" id="notesList">Chargement...</div>
+  </div>
+  
+  <div class="editor-area">
+    <div id="editorView" style="display: none;">
+      <div class="note-actions-bar">
+        <button onclick="shareNote()" class="share-btn">🔗 Partager</button>
+        <button onclick="exportPDF()" class="export-btn">📄 PDF</button>
+        <button onclick="toggleFavorite()" id="favoriteBtn" class="share-btn" style="background:#ff9800;">☆ Favori</button>
+      </div>
+      
+      <input type="text" id="noteTitle" placeholder="Titre...">
+      
+      <div class="tag-input-group">
+        <input type="text" id="tagInput" class="tag-input" placeholder="Ajouter un tag">
+        <button onclick="addTag()" style="padding:6px 15px; background:#667eea; color:white; border:none; border-radius:6px; cursor:pointer;">+</button>
+      </div>
+      <div id="currentTags" class="tags-container"></div>
+      
+      <!-- Quill Editor compact -->
+      <div class="quill-wrapper">
+        <div id="editor-container" style="height: 200px; background: white; border-radius: 8px;"></div>
+      </div>
+      
+      <div class="media-upload">
+        <label class="upload-btn">📎 Fichier
+          <input type="file" id="fileInput" style="display: none;" onchange="uploadMedia()">
+        </label>
+        <div class="media-gallery" id="mediaGallery"></div>
+      </div>
+      
+      <div>
+        <button onclick="saveNote()" class="save-btn">💾 Sauvegarder</button>
+        <button onclick="deleteCurrentNote()" class="delete-btn">🗑️ Supprimer</button>
+      </div>
+    </div>
+    <div id="noNoteSelected" class="no-note">
+      📝 Sélectionnez une note<br>
+      <small>Éditeur riche : gras, italique, listes...</small>
+    </div>
+  </div>
+</div>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+
+<div id="shareModal" class="modal">
+  <div class="modal-content">
+    <h3>🔗 Partager</h3>
+    <input type="text" id="shareLink" readonly style="width:100%; padding:8px; margin:10px 0; border:1px solid #dee2e6; border-radius:6px;">
+    <button onclick="copyShareLink()" style="background:#28a745; color:white; padding:6px 12px;">Copier</button>
+    <button onclick="closeShareModal()" style="background:#6c757d; color:white; padding:6px 12px;">Fermer</button>
+  </div>
+</div>
+
+<div id="createModal" class="modal">
+  <div class="modal-content">
+    <h3>📝 Nouvelle note</h3>
+    <input type="text" id="newNoteTitle" placeholder="Titre">
+    <textarea id="newNoteContent" placeholder="Contenu" rows="3"></textarea>
+    <button onclick="createNote()" style="background:#28a745; color:white;">Créer</button>
+    <button onclick="closeModal()" style="background:#6c757d; color:white;">Annuler</button>
+  </div>
+</div>
+
+<script>
+let currentNoteId = null;
+let currentFavoriteFilter = false;
+let searchTimeout = null;
+let currentTags = [];
+let quill = null;
+
+// Initialiser Quill Editor avec taille réduite
+quill = new Quill('#editor-container', {
+  theme: 'snow',
+  placeholder: 'Écrivez votre note...',
+  modules: {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link', 'clean']
+    ]
+  }
+});
+
+// Thème
+function toggleTheme() {
+  document.body.classList.toggle('dark-theme');
+  localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+}
+if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-theme');
+
+// Tags
+function addTag() {
+  const tag = document.getElementById('tagInput').value.trim().toLowerCase();
+  if (tag && !currentTags.includes(tag)) { currentTags.push(tag); displayCurrentTags(); document.getElementById('tagInput').value = ''; }
+}
+function removeTag(tag) { currentTags = currentTags.filter(t => t !== tag); displayCurrentTags(); }
+function displayCurrentTags() {
+  document.getElementById('currentTags').innerHTML = currentTags.map(tag => `<span class="tag">#${tag} <span onclick="removeTag('${tag}')" style="cursor:pointer;">✖</span></span>`).join('');
+}
+
+// Partage
+async function shareNote() {
+  if (!currentNoteId) return;
+  const res = await fetch(`/api/notes/${currentNoteId}/share`, { method: 'POST' });
+  const data = await res.json();
+  document.getElementById('shareLink').value = `${window.location.origin}/shared/${data.share_id}`;
+  document.getElementById('shareModal').style.display = 'block';
+}
+function copyShareLink() { document.getElementById('shareLink').select(); document.execCommand('copy'); alert('✅ Lien copié !'); }
+function closeShareModal() { document.getElementById('shareModal').style.display = 'none'; }
+async function exportPDF() { if (currentNoteId) window.open(`/api/notes/${currentNoteId}/export`, '_blank'); }
+
+// Charger notes
+async function loadNotes() {
+  const search = document.getElementById('searchInput').value;
+  const res = await fetch(`/api/notes?search=${encodeURIComponent(search)}&favorite_only=${currentFavoriteFilter}`);
+  if (res.status === 401) window.location.href = '/login';
+  const notes = await res.json();
+  const container = document.getElementById('notesList');
+  if (!notes.length) { container.innerHTML = '<div>Aucune note</div>'; return; }
+  container.innerHTML = notes.map(n => `<div class="note-item ${n.id === currentNoteId ? 'active' : ''}" onclick="loadNote(${n.id})">
+    <div class="note-title">${n.is_favorite ? '⭐ ' : '📝 '}${escapeHtml(n.title.substring(0,25))}</div>
+    <div class="note-preview">${escapeHtml((n.content || '').replace(/<[^>]*>/g, '').substring(0,45))}</div>
+    <div class="note-date">${new Date(n.updated_at).toLocaleDateString()}</div></div>`).join('');
+  
+  const allTags = notes.flatMap(n => n.tags || []);
+  const tagCounts = {};
+  allTags.forEach(t => tagCounts[t] = (tagCounts[t] || 0) + 1);
+  document.getElementById('tagsCloud').innerHTML = Object.entries(tagCounts).map(([t,c]) => `<span class="tag" onclick="filterByTag('${t}')">#${t} (${c})</span>`).join('');
+}
+function filterByTag(tag) { document.getElementById('searchInput').value = `#${tag}`; loadNotes(); }
+
+// Charger une note
+async function loadNote(id) {
+  currentNoteId = id;
+  const res = await fetch(`/api/notes/${id}`);
+  const note = await res.json();
+  document.getElementById('editorView').style.display = 'block';
+  document.getElementById('noNoteSelected').style.display = 'none';
+  document.getElementById('noteTitle').value = note.title;
+  quill.root.innerHTML = note.content || '';
+  currentTags = note.tags || [];
+  displayCurrentTags();
+  document.getElementById('favoriteBtn').textContent = note.is_favorite ? '⭐ Favori' : '☆ Favori';
+  
+  const gallery = document.getElementById('mediaGallery');
+  if (!note.media || !note.media.length) gallery.innerHTML = '<p style="font-size:11px;">📭 Aucun fichier</p>';
+  else gallery.innerHTML = note.media.map(m => `<div class="media-item">
+    ${m.file_type === 'image' ? `<img src="${m.url}" alt="${m.filename}">` : `<div style="font-size:10px;">📄 ${m.filename}<br><a href="${m.url}" target="_blank">Voir</a></div>`}
+    <button onclick="deleteMedia(${m.id})" class="delete-media">✖</button>
+  </div>`).join('');
+}
+
+// Sauvegarder
+async function saveNote() {
+  const title = document.getElementById('noteTitle').value;
+  const content = quill.root.innerHTML;
+  if (!title) return alert('Titre requis');
+  await fetch(`/api/notes/${currentNoteId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title, content, tags: currentTags})
+  });
+  loadNotes();
+  alert('✅ Sauvegardé');
+}
+
+// Upload
+async function uploadMedia() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file || !currentNoteId) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  let fileType = 'document';
+  if (file.type.startsWith('image/')) fileType = 'image';
+  else if (file.type.startsWith('video/')) fileType = 'video';
+  formData.append('type', fileType);
+  const res = await fetch(`/api/notes/${currentNoteId}/media`, { method: 'POST', body: formData });
+  if (res.ok) { loadNote(currentNoteId); document.getElementById('fileInput').value = ''; alert('✅ Fichier uploadé'); }
+  else alert('Erreur');
+}
+
+// Favori
+async function toggleFavorite() {
+  const res = await fetch(`/api/notes/${currentNoteId}/favorite`, { method: 'POST' });
+  const data = await res.json();
+  document.getElementById('favoriteBtn').textContent = data.is_favorite ? '⭐ Favori' : '☆ Favori';
+  loadNotes();
+}
+
+// Supprimer
+async function deleteCurrentNote() {
+  if (!confirm('Supprimer ?')) return;
+  await fetch(`/api/notes/${currentNoteId}`, { method: 'DELETE' });
+  currentNoteId = null;
+  document.getElementById('editorView').style.display = 'none';
+  document.getElementById('noNoteSelected').style.display = 'block';
+  loadNotes();
+}
+async function deleteMedia(mediaId) {
+  if (!confirm('Supprimer ce fichier ?')) return;
+  await fetch(`/api/media/${mediaId}`, { method: 'DELETE' });
+  loadNote(currentNoteId);
+}
+
+function searchNotes() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => loadNotes(), 300); }
+function toggleFavoriteFilter() { currentFavoriteFilter = !currentFavoriteFilter; document.getElementById('favFilterBtn').classList.toggle('active', currentFavoriteFilter); loadNotes(); }
+function showCreateNoteModal() { document.getElementById('createModal').style.display = 'block'; }
+
+async function createNote() {
+  const title = document.getElementById('newNoteTitle').value;
+  const content = document.getElementById('newNoteContent').value;
+  if (!title) return alert('Titre requis');
+  const res = await fetch('/api/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title, content}) });
+  const note = await res.json();
+  closeModal();
+  loadNotes();
+  setTimeout(() => loadNote(note.id), 500);
+}
+function closeModal() { document.getElementById('createModal').style.display = 'none'; document.getElementById('newNoteTitle').value = ''; document.getElementById('newNoteContent').value = ''; }
+function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+document.addEventListener('DOMContentLoaded', () => loadNotes());
+</script>
+{% endblock %}
