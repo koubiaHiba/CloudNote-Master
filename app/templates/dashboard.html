@@ -34,6 +34,8 @@
   .filter-btn { width: 100%; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; margin-bottom: 8px; font-size: 13px; }
   .filter-btn.active { background: #ff9800; color: white; }
   .new-note-btn { width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; margin: 12px 0; font-weight: 600; font-size: 13px; }
+  .trash-btn { width: 100%; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; margin: 5px 0; font-weight: 600; font-size: 13px; }
+  .trash-btn:hover { background: #5a6268; }
   
   .note-item { padding: 10px; background: white; border-radius: 8px; cursor: pointer; margin-bottom: 8px; border: 1px solid #e9ecef; }
   .note-item:hover { transform: translateX(3px); }
@@ -69,11 +71,30 @@
   .delete-btn { background: #dc3545; color: white; }
   
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-  .modal-content { background: white; width: 400px; margin: 100px auto; padding: 20px; border-radius: 12px; }
+  .modal-content { background: white; width: 500px; margin: 100px auto; padding: 20px; border-radius: 12px; }
   .modal-content input, .modal-content textarea { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #dee2e6; border-radius: 6px; }
   
   .no-note { text-align: center; padding: 60px; color: #6c757d; font-size: 14px; }
   h4 { font-size: 13px; margin: 10px 0 5px; }
+  
+  /* Styles pour la corbeille */
+  .trash-list { max-height: 400px; overflow-y: auto; }
+  .trash-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e0e0e0; background: #f8f9fa; margin-bottom: 10px; border-radius: 8px; }
+  .trash-item-info { display: flex; flex-direction: column; gap: 5px; }
+  .trash-item-info strong { font-size: 14px; }
+  .trash-item-info small { color: #6c757d; font-size: 11px; }
+  .restore-btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 8px; }
+  .permanent-delete-btn { padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; }
+  .empty-trash { text-align: center; padding: 50px; color: #6c757d; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 20px; }
+  .close { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
+  .close:hover { color: #000; }
+  
+  /* Notifications */
+  .notification { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; animation: slideInRight 0.3s ease; }
+  .notification.success { background: #28a745; }
+  .notification.warning { background: #dc3545; }
+  @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
 
 <div class="dashboard-container" id="dashboardContainer">
@@ -83,6 +104,7 @@
     </div>
     <button onclick="toggleFavoriteFilter()" id="favFilterBtn" class="filter-btn">⭐ Favorites</button>
     <button onclick="showCreateNoteModal()" class="new-note-btn">+ Nouvelle note</button>
+    <button onclick="showTrash()" class="trash-btn">🗑️ Corbeille</button>
     <h4>🏷️ Tags</h4>
     <div id="tagsCloud" class="tags-container"></div>
     <div class="notes-list" id="notesList">Chargement...</div>
@@ -130,6 +152,7 @@
 
 <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
 
+<!-- Modal Partage -->
 <div id="shareModal" class="modal">
   <div class="modal-content">
     <h3>🔗 Partager</h3>
@@ -139,6 +162,7 @@
   </div>
 </div>
 
+<!-- Modal Nouvelle note -->
 <div id="createModal" class="modal">
   <div class="modal-content">
     <h3>📝 Nouvelle note</h3>
@@ -146,6 +170,19 @@
     <textarea id="newNoteContent" placeholder="Contenu" rows="3"></textarea>
     <button onclick="createNote()" style="background:#28a745; color:white;">Créer</button>
     <button onclick="closeModal()" style="background:#6c757d; color:white;">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal Corbeille -->
+<div id="trashModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>🗑️ Corbeille</h2>
+      <span class="close" onclick="closeTrash()">&times;</span>
+    </div>
+    <div id="trashList" class="trash-list">
+      <!-- Les notes supprimées apparaîtront ici -->
+    </div>
   </div>
 </div>
 
@@ -194,7 +231,7 @@ async function shareNote() {
   document.getElementById('shareLink').value = `${window.location.origin}/shared/${data.share_id}`;
   document.getElementById('shareModal').style.display = 'block';
 }
-function copyShareLink() { document.getElementById('shareLink').select(); document.execCommand('copy'); alert('✅ Lien copié !'); }
+function copyShareLink() { document.getElementById('shareLink').select(); document.execCommand('copy'); showNotification('Lien copié !', 'success'); }
 function closeShareModal() { document.getElementById('shareModal').style.display = 'none'; }
 async function exportPDF() { if (currentNoteId) window.open(`/api/notes/${currentNoteId}/export`, '_blank'); }
 
@@ -243,14 +280,14 @@ async function loadNote(id) {
 async function saveNote() {
   const title = document.getElementById('noteTitle').value;
   const content = quill.root.innerHTML;
-  if (!title) return alert('Titre requis');
+  if (!title) return showNotification('Titre requis', 'warning');
   await fetch(`/api/notes/${currentNoteId}`, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({title, content, tags: currentTags})
   });
   loadNotes();
-  alert('✅ Sauvegardé');
+  showNotification('✅ Sauvegardé', 'success');
 }
 
 // Upload
@@ -264,8 +301,8 @@ async function uploadMedia() {
   else if (file.type.startsWith('video/')) fileType = 'video';
   formData.append('type', fileType);
   const res = await fetch(`/api/notes/${currentNoteId}/media`, { method: 'POST', body: formData });
-  if (res.ok) { loadNote(currentNoteId); document.getElementById('fileInput').value = ''; alert('✅ Fichier uploadé'); }
-  else alert('Erreur');
+  if (res.ok) { loadNote(currentNoteId); document.getElementById('fileInput').value = ''; showNotification('✅ Fichier uploadé', 'success'); }
+  else showNotification('Erreur upload', 'warning');
 }
 
 // Favori
@@ -276,20 +313,71 @@ async function toggleFavorite() {
   loadNotes();
 }
 
-// Supprimer
+// Supprimer (met dans corbeille)
 async function deleteCurrentNote() {
-  if (!confirm('Supprimer ?')) return;
+  if (!confirm('🗑️ Déplacer dans la corbeille ?')) return;
   await fetch(`/api/notes/${currentNoteId}`, { method: 'DELETE' });
   currentNoteId = null;
   document.getElementById('editorView').style.display = 'none';
   document.getElementById('noNoteSelected').style.display = 'block';
   loadNotes();
+  showNotification('Note déplacée dans la corbeille', 'success');
 }
+
 async function deleteMedia(mediaId) {
   if (!confirm('Supprimer ce fichier ?')) return;
   await fetch(`/api/media/${mediaId}`, { method: 'DELETE' });
   loadNote(currentNoteId);
 }
+
+// ========== FONCTIONS CORBEILLE ==========
+async function showTrash() {
+  const res = await fetch('/api/trash');
+  const notes = await res.json();
+  const trashList = document.getElementById('trashList');
+  if (notes.length === 0) {
+    trashList.innerHTML = '<p class="empty-trash">📭 La corbeille est vide</p>';
+  } else {
+    trashList.innerHTML = notes.map(note => `
+      <div class="trash-item" data-id="${note.id}">
+        <div class="trash-item-info">
+          <strong>${escapeHtml(note.title)}</strong>
+          <small>Supprimée le: ${new Date(note.deleted_at).toLocaleString()}</small>
+        </div>
+        <div class="trash-item-actions">
+          <button onclick="restoreNote(${note.id})" class="restore-btn">🔄 Restaurer</button>
+          <button onclick="permanentDeleteNote(${note.id})" class="permanent-delete-btn">🗑️ Supprimer définitivement</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('trashModal').style.display = 'block';
+}
+
+function closeTrash() {
+  document.getElementById('trashModal').style.display = 'none';
+}
+
+async function restoreNote(noteId) {
+  const res = await fetch(`/api/notes/${noteId}/restore`, { method: 'POST' });
+  if (res.ok) {
+    showTrash();
+    loadNotes();
+    showNotification('Note restaurée avec succès', 'success');
+  }
+}
+
+async function permanentDeleteNote(noteId) {
+  if (confirm('⚠️ Attention ! Cette note sera supprimée définitivement. Action irréversible.')) {
+    const res = await fetch(`/api/notes/${noteId}/permanent`, { method: 'DELETE' });
+    if (res.ok) {
+      showTrash();
+      loadNotes();
+      showNotification('Note supprimée définitivement', 'warning');
+    }
+  }
+}
+// ========== FIN CORBEILLE ==========
 
 function searchNotes() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => loadNotes(), 300); }
 function toggleFavoriteFilter() { currentFavoriteFilter = !currentFavoriteFilter; document.getElementById('favFilterBtn').classList.toggle('active', currentFavoriteFilter); loadNotes(); }
@@ -298,7 +386,7 @@ function showCreateNoteModal() { document.getElementById('createModal').style.di
 async function createNote() {
   const title = document.getElementById('newNoteTitle').value;
   const content = document.getElementById('newNoteContent').value;
-  if (!title) return alert('Titre requis');
+  if (!title) return showNotification('Titre requis', 'warning');
   const res = await fetch('/api/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title, content}) });
   const note = await res.json();
   closeModal();
@@ -307,6 +395,14 @@ async function createNote() {
 }
 function closeModal() { document.getElementById('createModal').style.display = 'none'; document.getElementById('newNoteTitle').value = ''; document.getElementById('newNoteContent').value = ''; }
 function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+function showNotification(message, type) {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 3000);
+}
 
 document.addEventListener('DOMContentLoaded', () => loadNotes());
 </script>

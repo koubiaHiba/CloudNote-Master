@@ -29,7 +29,8 @@ class Note(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     media = db.relationship('Media', backref='note', lazy=True, cascade='all, delete-orphan')
     tags = db.relationship('Tag', backref='note', lazy=True, cascade='all, delete-orphan')
-
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    
 class Media(db.Model):
     __tablename__ = 'media'
     id = db.Column(db.Integer, primary_key=True)
@@ -68,7 +69,8 @@ import bleach
 # ========== get_user_notes pour inclure les tags ==========
 
 def get_user_notes(user_id, search_query=None, favorite_only=False):
-    query = Note.query.filter_by(user_id=user_id)
+    """Récupère UNIQUEMENT les notes NON supprimées (corbeille exclue)"""
+    query = Note.query.filter_by(user_id=user_id).filter(Note.deleted_at == None)
     
     if favorite_only:
         query = query.filter_by(is_favorite=True)
@@ -112,18 +114,30 @@ def update_note(note_id, user_id, title=None, content=None, is_favorite=None):
         db.session.commit()
     return note
 
-def delete_note(note_id, user_id):
-    note = get_note(note_id, user_id)
-    if note:
-        # Supprimer les fichiers physiques
-        import os
-        for media in note.media:
-            if os.path.exists(media.file_path):
-                os.remove(media.file_path)
+def delete_note(note_id, user_id, permanent=False):
+    """Si permanent=True, supprime définitivement, sinon met dans corbeille"""
+    note = Note.query.filter_by(id=note_id, user_id=user_id).first()
+    if not note:
+        return False
+    if permanent:
         db.session.delete(note)
+    else:
+        note.deleted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return True
+
+def restore_note(note_id, user_id):
+    """Restaure une note depuis la corbeille"""
+    note = Note.query.filter_by(id=note_id, user_id=user_id).first()
+    if note and note.deleted_at:
+        note.deleted_at = None
         db.session.commit()
         return True
     return False
+
+def get_deleted_notes(user_id):
+    """Récupère toutes les notes dans la corbeille"""
+    return Note.query.filter_by(user_id=user_id).filter(Note.deleted_at != None).all()
 
 def toggle_favorite(note_id, user_id):
     note = get_note(note_id, user_id)

@@ -51,7 +51,7 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.filter_by(id=int(user_id)).first()
+    return User.query.get(int(user_id))
 
 # Créer les tables
 with app.app_context():
@@ -359,6 +359,38 @@ def not_found(e):
 def internal_error(e):
     logger.error("500_internal_error", extra={"traceback": traceback.format_exc()})
     return jsonify({"error": "internal server error"}), 500
+
+# ========== API CORBEILLE ==========
+@app.route("/api/trash", methods=["GET"])
+@login_required
+def get_trash():
+    """Récupère les notes dans la corbeille"""
+    from app.models import get_deleted_notes
+    notes = get_deleted_notes(current_user.id)
+    return jsonify([{
+        'id': n.id,
+        'title': n.title,
+        'deleted_at': n.deleted_at.isoformat()
+    } for n in notes])
+
+@app.route("/api/notes/<int:note_id>/restore", methods=["POST"])
+@login_required
+def restore_note_route(note_id):
+    """Restaure une note depuis la corbeille"""
+    from app.models import restore_note
+    if restore_note(note_id, current_user.id):
+        return jsonify({"message": "note restored"}), 200
+    return jsonify({"error": "note not found"}), 404
+
+@app.route("/api/notes/<int:note_id>/permanent", methods=["DELETE"])
+@login_required
+def permanent_delete_note_route(note_id):
+    """Supprime définitivement une note"""
+    from app.models import delete_note
+    if delete_note(note_id, current_user.id, permanent=True):
+        return jsonify({"message": "note permanently deleted"}), 200
+    return jsonify({"error": "note not found"}), 404
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
